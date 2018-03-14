@@ -7,7 +7,8 @@ import re
 from subprocess import call
 
 
-PROJECT_PATH = os.path.dirname(os.path.realpath(__file__))
+PROJECT_PATH = os.getcwd()
+MANAGE_FILE = os.path.join(PROJECT_PATH, "manage.py")
 
 
 def print_error(message):
@@ -127,7 +128,7 @@ def genfile_c9_runner(env):
 
     command = [
         os.path.join(PROJECT_PATH, "venv", "bin", "python"),
-        os.path.join(PROJECT_PATH, "manage.py"),
+        MANAGE_FILE,
         "runserver $ip:$port"
     ]
 
@@ -206,6 +207,10 @@ COMMANDS = (
 
 
 if __name__ == "__main__":
+    if not os.path.exists(MANAGE_FILE):
+        print_error("manage.py file doesn't exist in the current directory")
+        exit(1)
+
     env = {
         "project_name": get_project_name()
     }
