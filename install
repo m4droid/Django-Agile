@@ -67,7 +67,7 @@ def genfile_coveragerc(env):
         "[run]",
         "branch = true",
         "source = {0:s}".format(env['project_name']),
-        "omit = manage.py,**/migrations/*,**/test*",
+        "omit = manage.py,*/migrations/*,*/tests/*,*/tests.py",
         "",
         "[html]",
         "directory = coverage",
@@ -118,6 +118,25 @@ def genfile_python_requirements_test(env):
     return ('requirements-test.txt', content + [""])
 
 
+def genfile_run_tests(env):
+    content = [
+        "#!/bin/bash",
+        "",
+        "set -e",
+        "",
+        "DIR=\"$( cd \"$( dirname \"${BASH_SOURCE[0]}\" )\" && pwd )\"",
+        "",
+        "COVERAGE_HTML=\"${DIR}/coverage\"",
+        "",
+        "",
+        "COMMAND=${DIR}/venv/bin/coverage"
+        "",
+        "${COMMAND} run ${DIR}/manage.py test --verbosity=2 $@ && ${COMMAND} html -d ${COVERAGE_HTML} && ${COMMAND} report -m",
+    ]
+
+    return ('runtests.sh', content + [""])
+
+
 def genfile_c9_runner(env):
     
     runners_dir = os.path.join(PROJECT_PATH, ".c9", "runners")
@@ -144,7 +163,7 @@ def genfile_c9_runner(env):
     }
     
     return (
-        os.path.join(runners_dir, "django-agile-venv.run"),
+        os.path.join(".c9", "runners", "django-agile-venv.run"),
         json.dumps(content, indent=2)
     )
 
@@ -166,7 +185,10 @@ def genfile_c9_project_settings(env):
     
     content["run"]["configs"]["json()"] = runner
     
-    return (SETTINGS_FILE, json.dumps(content, indent=2))
+    return (
+        os.path.join(".c9", "project.settings"),
+        json.dumps(content, indent=2)
+    )
 
 
 def command_virtualenv(env):
@@ -197,6 +219,7 @@ FILE_GENERATORS = (
     genfile_python_requirements,
     # genfile_python_requirements_dev,
     genfile_python_requirements_test,
+    genfile_run_tests,
     genfile_c9_runner,
     genfile_c9_project_settings,
 )
@@ -229,6 +252,9 @@ if __name__ == "__main__":
     
         with open(os.path.join(PROJECT_PATH, file_data[0]), 'w') as file_:
             file_.write(payload)
+
+    # TODO: fix this
+    call(["chmod", "755", os.path.join(PROJECT_PATH, "runtests.sh")])
 
     print_warning("Creating virtualenv")
     command_virtualenv(env)
