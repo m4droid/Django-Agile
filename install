@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 from __future__ import print_function
 
+import ConfigParser
 import json
 import os
 import re
+from StringIO import StringIO
 from subprocess import call
 
 
@@ -287,6 +289,42 @@ class BashRcVirtualenvFile(BaseFile):
         return content
 
 
+class GitConfigFile(BaseFile):
+
+    @property
+    def filepath(self):
+        return os.path.join("..", ".gitconfig")
+
+    def content(self, env):
+        config_file = os.path.join(env["PROJECT_PATH"], "..", ".gitconfig")
+
+        if not os.path.exists(config_file):
+            with open(config_file, "w"):
+                pass
+
+        with open(config_file) as file_:
+            lines = file_.readlines()
+
+        config = ConfigParser.SafeConfigParser()
+        config.readfp(StringIO("".join(l.lstrip() for l in lines)))
+
+        if not config.has_section("alias"):
+            config.add_section("alias")
+
+        config.set("alias", "co", "checkout")
+        config.set("alias", "ci", "commit")
+        config.set("alias", "st", "status")
+        config.set("alias", "br", "branch")
+        config.set("alias", "au", "!git add $(git ls-files -o --exclude-standard)")
+
+        output = StringIO()
+        config.write(output)
+
+        return "\n".join(
+            l if l.startswith("[") else (4 * " ") + l for l in output.getvalue().split("\n")
+        )
+
+
 class BaseCommand(object):
 
     def parts(self, env, **ka):
@@ -337,6 +375,7 @@ FILE_GENERATORS = (
     DjangoC9RunnerFile(),
     DjangoC9ProjectSettingsFile(),
     BashRcVirtualenvFile(),
+    GitConfigFile(),
 )
 
 
