@@ -266,12 +266,12 @@ class PipInstallCommand(BaseCommand):
             "requirements{0:s}.txt".format("-" + file_ if file_ else "")
         )
 
-        call([
+        return [
             os.path.join(PROJECT_PATH, "venv", "bin", "pip"),
             "install",
             "-r",
             file_abs_path
-        ])
+        ]
 
 
 FILE_GENERATORS = (
@@ -331,4 +331,4 @@ if __name__ == "__main__":
         
     print_warning("Installing requirements in virtualenv")
     for file_ in [None, "test"]:
-        PipInstallCommand().parts(env, file_=file_)
+        call(PipInstallCommand().parts(env, file_=file_))
