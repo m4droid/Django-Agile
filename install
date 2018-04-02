@@ -42,7 +42,7 @@ class BaseFile(object):
     
     @property
     def permissions(self):
-        return 644
+        return 0o644
 
     @property
     def filepath(self):
@@ -50,6 +50,35 @@ class BaseFile(object):
 
     def content(self, env):
         raise NotImplementedError
+
+    def __str__(self):
+        return "{0:o} {1:s}".format(self.permissions, self.filepath)
+
+    def generate(self, env):
+        file_content = self.content(env)
+
+        # Python 3 fix
+        try:
+            basestring
+        except NameError:
+            basestring = str
+
+        payload = file_content if isinstance(file_content, basestring) else "\n".join(file_content)
+
+        file_path = os.path.join(env["PROJECT_PATH"], generator.filepath)
+        file_directory = os.path.dirname(file_path)
+
+        if not os.path.isdir(file_directory):
+            os.makedirs(file_directory)
+
+        with open(file_path, "w") as file_:
+            file_.write(payload)
+
+        call([
+            "chmod",
+            "{0:o}".format(generator.permissions),
+            os.path.join(env["PROJECT_PATH"], generator.filepath)
+        ])
 
 
 class GitIgnoreFile(BaseFile):
@@ -160,7 +189,7 @@ class RunTestsScriptFile(BaseFile):
 
     @property
     def permissions(self):
-        return 755
+        return 0o755
     
     @property
     def filepath(self):
@@ -238,19 +267,42 @@ class DjangoC9ProjectSettingsFile(BaseFile):
         return json.dumps(content, indent=2)
 
 
+class BashRcVirtualenvFile(BaseFile):
+
+    @property
+    def filepath(self):
+        return os.path.join("..", ".bashrc")
+
+    def content(self, env):
+        SETTINGS_FILE = os.path.join(env["PROJECT_PATH"], "..", ".bashrc")
+
+        with open(SETTINGS_FILE) as file_:
+            content = file_.read()
+
+        command = "[ -f ~/workspace/venv/bin/activate ] && source ~/workspace/venv/bin/activate"
+
+        if command not in content:
+            content += "\n".join([command, ""])
+
+        return content
+
+
 class BaseCommand(object):
 
     def parts(self, env, **ka):
         raise NotImplementedError
+
+    def call(self, env, **ka):
+        call(self.parts(env, **ka))
 
 
 class CreateVirtualenvCommand(BaseCommand):
 
     def parts(self, env, **ka):
         return [
-            "virtualenv",
+            "/usr/bin/virtualenv",
             "-p",
-            "python3",
+            "/usr/bin/python3",
             os.path.join(PROJECT_PATH, "venv")
         ]
 
@@ -284,6 +336,7 @@ FILE_GENERATORS = (
     RunTestsScriptFile(),
     DjangoC9RunnerFile(),
     DjangoC9ProjectSettingsFile(),
+    BashRcVirtualenvFile(),
 )
 
 
@@ -304,31 +357,14 @@ if __name__ == "__main__":
     print_warning("Creating static files")
 
     for generator in FILE_GENERATORS:
-        file_content = generator.content(env)
-
-        print_info(generator.filepath)
-        
-        payload = file_content if isinstance(file_content, basestring) else "\n".join(file_content)
-        
-        file_path = os.path.join(PROJECT_PATH, generator.filepath)
-        file_directory = os.path.dirname(file_path)
-
-        if not os.path.isdir(file_directory):
-            os.makedirs(file_directory)
-    
-        with open(file_path, "w") as file_:
-            file_.write(payload)
-
-        call([
-            "chmod",
-            "{0:d}".format(generator.permissions),
-            os.path.join(PROJECT_PATH, generator.filepath)
-        ])
-
+        print_info(generator)
+        generator.generate(env)
 
     print_warning("Creating virtualenv")
-    call(CreateVirtualenvCommand().parts(env))
+
+    CreateVirtualenvCommand().call(env)
         
     print_warning("Installing requirements in virtualenv")
+
     for file_ in [None, "test"]:
-        call(PipInstallCommand().parts(env, file_=file_))
+        PipInstallCommand().call(env, file_=file_)
