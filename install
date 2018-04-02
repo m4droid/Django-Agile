@@ -28,20 +28,20 @@ def print_warning(message):
 def get_project_name():
     with open(os.path.join(PROJECT_PATH, "manage.py")) as file_:
         content = file_.read()
-        
+
     default_settings_module = re.findall(
         r"[\"\']DJANGO_SETTINGS_MODULE[\"']\s*,\s*[\"\'](.*)[\"\']",
         content
     )
-    
+
     if len(default_settings_module) == 0:
         return None
 
-    return default_settings_module[0].split(".")[0] 
+    return default_settings_module[0].split(".")[0]
 
 
 class BaseFile(object):
-    
+
     @property
     def permissions(self):
         return 0o644
@@ -112,7 +112,7 @@ class GitIgnoreFile(BaseFile):
 
 
 class CoverageRcFile(BaseFile):
-    
+
     @property
     def filepath(self):
         return ".coveragerc"
@@ -130,7 +130,7 @@ class CoverageRcFile(BaseFile):
 
 
 class TravisCiFile(BaseFile):
-    
+
     @property
     def filepath(self):
         return ".travis.yml"
@@ -139,7 +139,7 @@ class TravisCiFile(BaseFile):
         return [
             "language: python",
             "python:",
-            "  - \"3.4\"", # c9 Python version
+            "  - \"3.4\"",  # c9 Python version
             "install:",
             "  - pip install requirements.txt",
             "  - pip install requirements-test.txt",
@@ -192,7 +192,7 @@ class RunTestsScriptFile(BaseFile):
     @property
     def permissions(self):
         return 0o755
-    
+
     @property
     def filepath(self):
         return "runtests.sh"
@@ -215,14 +215,12 @@ class RunTestsScriptFile(BaseFile):
 
 
 class DjangoC9RunnerFile(BaseFile):
-    
+
     @property
     def filepath(self):
         return os.path.join(".c9", "runners", "django-agile-venv.run")
 
     def content(self, env):
-        runners_dir = os.path.join(env["PROJECT_PATH"], ".c9", "runners")
-
         command = [
             os.path.join(env["PROJECT_PATH"], "venv", "bin", "python"),
             MANAGE_FILE,
@@ -252,8 +250,8 @@ class DjangoC9ProjectSettingsFile(BaseFile):
     def content(self, env):
         runner = {
             "django-agile": {
-            "default": True,
-            "name": "django-agile",
+                "default": True,
+                "name": "django-agile",
                 "runner": "django-agile-venv",
                 "toolbar": True
             }
@@ -388,7 +386,7 @@ if __name__ == "__main__":
         "PROJECT_PATH": PROJECT_PATH,
         "PROJECT_NAME": get_project_name()
     }
-    
+
     if not env["PROJECT_NAME"]:
         print_error("Project name wasn't found in manage.py file")
         exit(1)
@@ -402,7 +400,7 @@ if __name__ == "__main__":
     print_warning("Creating virtualenv")
 
     CreateVirtualenvCommand().call(env)
-        
+
     print_warning("Installing requirements in virtualenv")
 
     for file_ in [None, "test"]:
